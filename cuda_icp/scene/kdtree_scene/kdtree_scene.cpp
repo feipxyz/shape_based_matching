@@ -1,4 +1,5 @@
 #include "kdtree_scene.h"
+#include <numeric>
 
 void Scene_kdtree::init_Scene_kdtree_cpu(cv::Mat dx_, cv::Mat dy_, KDTree_cpu& kdtree,
                                     float max_dist_diff, float low_thresh, float high_thresh)

@@ -1,6 +1,6 @@
 
 # opencv
-find_package(OpenCV 3 REQUIRED)
+find_package(OpenCV 4 REQUIRED)
 list(APPEND icp_inc ${OpenCV_INCLUDE_DIRS})
 list(APPEND icp_lib ${OpenCV_LIBS})
 
@@ -8,7 +8,8 @@ list(APPEND icp_lib ${OpenCV_LIBS})
 if(USE_CUDA)
 # cuda
 find_package(CUDA REQUIRED)
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -O3 --default-stream per-thread -Xcompiler -fopenmp")
+# set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -O3 --default-stream per-thread -Xcompiler -fopenmp")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -O3 --default-stream per-thread -Xcompiler")
 list(APPEND icp_inc ${CUDA_INCLUDE_DIRS})
 list(APPEND icp_lib ${CUDA_LIBRARIES})
 endif()

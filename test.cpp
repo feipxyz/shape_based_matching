@@ -9,7 +9,7 @@
 using namespace std;
 using namespace cv;
 
-static std::string prefix = "/home/meiqua/shape_based_matching/test/";
+static std::string prefix = "/Users/feipeng/Gitlab/fei/shape_based_matching/test/";
 
 // NMS, got from cv::dnn so we don't need opencv contrib
 // just collapse it
@@ -172,7 +172,8 @@ void angle_test(string mode = "test", bool viewICP = false){
         // angle & scale are saved here, fetched by match id
         auto infos = shape_based_matching::shapeInfo_producer::load_infos(prefix + "case1/test_info.yaml");
 
-        Mat test_img = imread(prefix+"case1/train.png");
+        // Mat test_img = imread(prefix+"case1/train.png");
+        Mat test_img = imread(prefix+"case1/test.png");
         assert(!test_img.empty() && "check your img path");
 
         int padding = 100;
@@ -197,7 +198,7 @@ void angle_test(string mode = "test", bool viewICP = false){
 
 
         std::cout << "matches.size(): " << matches.size() << std::endl;
-        size_t top5 = 5;
+        size_t top5 = 1;
         if(top5>matches.size()) top5=matches.size();
 
         // construct scene
@@ -212,13 +213,13 @@ void angle_test(string mode = "test", bool viewICP = false){
         KDTree_cpu kdtree;
         scene.init_Scene_kdtree_cpu(detector.dx_, detector.dy_, kdtree);
 
-        if(img.channels() == 1) cvtColor(img, img, CV_GRAY2BGR);
+        if(img.channels() == 1) cvtColor(img, img, COLOR_GRAY2BGR);
 
         cv::Mat edge_global;  // get edge
         {
             cv::Mat gray;
             if(img.channels() > 1){
-                cv::cvtColor(img, gray, CV_BGR2GRAY);
+                cv::cvtColor(img, gray, COLOR_BGR2GRAY);
             }else{
                 gray = img;
             }
@@ -226,7 +227,7 @@ void angle_test(string mode = "test", bool viewICP = false){
             cv::Mat smoothed = gray;
             cv::Canny(smoothed, edge_global, 100, 200);
 
-            if(edge_global.channels() == 1) cvtColor(edge_global, edge_global, CV_GRAY2BGR);
+            if(edge_global.channels() == 1) cvtColor(edge_global, edge_global, COLOR_GRAY2BGR);
         }
 
         for(int i=top5-1; i>=0; i--)
@@ -241,15 +242,26 @@ void angle_test(string mode = "test", bool viewICP = false){
             // 100 is padding when training
             // tl_x/y: template croping topleft corner when training
 
-//            float r_scaled = 270/2.0f*infos[match.template_id].scale;
+            float r_scaled = 270/2.0f*infos[match.template_id].scale;
 
             // scaling won't affect this, because it has been determined by warpAffine
             // cv::warpAffine(src, dst, rot_mat, src.size()); last param
-//            float train_img_half_width = 270/2.0f + 100;
+            float train_img_half_width = 270/2.0f + 100;
 
             // center x,y of train_img in test img
-//            float x =  match.x - templ[0].tl_x + train_img_half_width;
-//            float y =  match.y - templ[0].tl_y + train_img_half_width;
+            float x1 =  match.x - templ[0].tl_x + train_img_half_width;
+            float y1 =  match.y - templ[0].tl_y + train_img_half_width;
+            cv::RotatedRect rotatedRectangle1({x1, y1}, {2*r_scaled, 2*r_scaled}, -infos[match.template_id].angle);
+            cv::Point2f vertices1[4];
+            rotatedRectangle1.points(vertices1);
+            cv::Vec3b randColor1;
+            randColor1[0] = 255;
+            randColor1[1] = 0;
+            randColor1[2] = 0;
+            for(int i=0; i<4; i++){
+                int next = (i+1==4) ? 0 : (i+1);
+                cv::line(img, vertices1[i], vertices1[next], randColor1, 2);
+            }
 
             vector<::Vec2f> model_pcd(templ[0].features.size());
             for(int i=0; i<templ[0].features.size(); i++){
@@ -276,7 +288,8 @@ void angle_test(string mode = "test", bool viewICP = false){
             }
 
             if(viewICP){
-                imshow("icp", edge);
+                // imshow("icp", edge);
+                imshow("img", img);
                 waitKey(0);
             }
 
@@ -293,10 +306,15 @@ void angle_test(string mode = "test", bool viewICP = false){
 
                 cv::circle(edge, {int(new_x+0.5f), int(new_y+0.5f)}, 2, randColor, -1);
             }
-            if(viewICP){
-                imshow("icp", edge);
-                waitKey(0);
-            }
+
+            // float x2 = result.transformation_[0][0]*x + result.transformation_[0][1]*y + result.transformation_[0][2];
+            // float y2 = result.transformation_[1][0]*x + result.transformation_[1][1]*y + result.transformation_[1][2];
+
+            // if(viewICP){
+            //     // imshow("img", edge);
+            //     imshow("img", img);
+            //     waitKey(0);
+            // }
 
             double init_angle = infos[match.template_id].angle;
             init_angle = init_angle >= 180 ? (init_angle-360) : init_angle;
@@ -305,6 +323,25 @@ void angle_test(string mode = "test", bool viewICP = false){
             double icp_diff_angle = std::abs(-std::asin(result.transformation_[1][0])/CV_PI*180 +
                     init_angle);
             double improved_angle = ori_diff_angle - icp_diff_angle;
+
+            cv::RotatedRect rotatedRectangle2({x1, y1}, {2*r_scaled, 2*r_scaled}, icp_diff_angle);
+            cv::Point2f vertices2[4];
+            rotatedRectangle2.points(vertices2);
+            cv::Vec3b randColor2;
+            randColor2[0] = 0;
+            randColor2[1] = 0;
+            randColor2[2] = 255;
+            for(int i=0; i<4; i++){
+                int next = (i+1==4) ? 0 : (i+1);
+                cv::line(img, vertices2[i], vertices2[next], randColor2, 2);
+            }
+
+            if(viewICP){
+                imshow("img", img);
+                waitKey(0);
+            }
+
+
 
             std::cout << "\n---------------" << std::endl;
             std::cout << "init diff angle: " << ori_diff_angle << std::endl;
@@ -346,5 +383,6 @@ int main(){
 
     MIPP_test();
     angle_test("test", true); // test or train
+    // angle_test("train", true); // test or train
     return 0;
 }
